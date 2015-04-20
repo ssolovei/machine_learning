@@ -1,0 +1,69 @@
+---
+title: "Analysis of Accelerometers Data"
+author: "Sergei Solovei"
+date: "Sunday, April 19, 2015"
+output: html_document
+---
+The project explores the relationship between data from accelerometers on the belt, forearm, arm, and dumbbell of 6 participants and the way in which an exercise was performed. There are 5 different ways in which exercise can be performed labeled respectively as A, B, C, D , F.  The ultimate goal of the project is to create a classification model which correctly predicts the exercise type based on the data input from accelerometers.
+
+The project uses Random Forest algorithm to classify types of exercises. The algorithm was chosen due to the fact that this algorithm is one of the best among classification algorithms - able to classify large amounts of data with accuracy.
+
+The dataset will be split into training and testing datasets using 60%/40% split ratio to test the model and avoid model overfit. The in-sample and out-of-sample tests will be conducted.  The out-of-sample test accuracy is expected to be lower than in-sample test accuracy,
+
+### Step 1: Load required libraries
+```{r}
+library(caret)
+library(randomForest)
+```
+### Step 2: Read in traing and final testing data. Perform data cleansing
+```{r}
+# read in training and final testing data
+pml_training <-  read.csv("pml-training.csv")
+pml_testing <- read.csv("pml-testing.csv")
+# remove rows where new_widow variable is equal to "yes", because these rows look like outliers when comparing to other rows.
+pml_training <- pml_training[pml_training$new_window == "no", ]
+pml_testing <- pml_testing[pml_testing$new_window == "no", ]
+# convert all empty columns to NAs
+pml_training[pml_training == ""] <- NA
+pml_testing[pml_testing == ""] <- NA
+# remove colummns that contain only NAs 
+pml_training <- pml_training[,colSums(is.na(pml_training))<nrow(pml_training)]
+pml_testing <- pml_testing[,colSums(is.na(pml_testing))<nrow(pml_testing)]
+# remove first 7 colums because they do not contain any data from accelerometers.
+pml_training <- pml_training[, -(1:7)]
+pml_testing <- pml_testing[, -(1:7)]
+# retain only rows that do not contain NAs in the training dataset
+pml_training <- pml_training[complete.cases(pml_training),]
+```
+### Step 3: Split training dataset into training and testing datasets
+```{r}
+# set the seed for the pseudo random numbers generator
+set.seed(1000)
+# split training dataset into training and testing datasets using 60%/40% split ratio
+inTrain <- createDataPartition(pml_training$classe, p = 0.6)[[1]]
+training <- pml_training[inTrain, ]
+testing <- pml_training[-inTrain, ]
+```
+### Step 4: Train Random Forest model
+modelFit <- train(as.factor(classe) ~ ., method = "rf", data = training, prox=TRUE)
+
+### Step 5: Predict outcomes for the training dataset and create its confusion matrix
+```{r}
+predictionsTraining <- predict(modelFit, training)
+cTraining <- confusionMatrix(predictionsTraining, training$classe)
+print(cTraining)
+```
+### Step 6: Predict outcomes for the testing dataset and create its confusion matrix
+```{r}
+predictionsTesting <- predict(modelFit, testing)
+cTesting <- confusionMatrix(predictionsTesting, testing$classe)
+print(cTesting)
+```
+### Step 7: Predict outcomes for the final testing dataset and otput predictions for 20 test cases
+```{r}
+#predict outcomes for the final testing dataset
+predictionsFinalTesting <- predict(modelFit, pml_testing)
+predictionsFinalTesting
+```
+### Conclusion
+Random Forest algorithm was able able to classify data very accurately. The accuracy of the in-sample test turned out to be 100%.  The accuracy of the out-of-sample test as expected was lower and equal to 99.05%.  Which is very high and means that the variables were chosen correctly and they have very high predictive power. The algorithm was also able to accurately predict all 20 test cases from the final test dataset.
